@@ -11,7 +11,7 @@ pipeline {
     REPO_NAME = 'bankapp'
     IMAGE_NAME = 'bankapp'
     IMAGE_TAG = 'latest'
-    ARTIFACT_REGISTRY = "${REGIOS}-docker.pkg.dev"
+    ARTIFACT_REGISTRY = "${REGION}-docker.pkg.dev"
   }
 
   stages {
@@ -77,14 +77,14 @@ pipeline {
     }
    }
 
-   stage ('Build Docker images') {
-    steps {
-        sh '''
-          docker push $ARTIFACT_REGISTRY/$PROJECT_ID/$REPO_NAME/$IMAGE_NAME:$IMAGE_TAG
-        '''
+    stage('Build Docker Image') {
+        steps {
+          sh '''
+            docker build -t $ARTIFACT_REGISTRY/$PROJECT_ID/$REPO_NAME/$IMAGE_NAME:$IMAGE_TAG .
+          '''
+        }
+        }
 
-    }
-   }
    stage('Trivy Scan (Docker Image)') {
           steps {
             sh '''
@@ -92,24 +92,17 @@ pipeline {
               trivy image --severity HIGH,CRITICAL --format json -o trivy-image-report.json $FULL_IMAGE
             '''
     }
-}
+  }
 
 
-   stage('Push Docker Image') {
-    steps {
-        sh '''
-          FULL_IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO_NAME}/${IMAGE_NAME}:${IMAGE_TAG}"
+   stage('Push to Artifact Registry') {
+            steps {
+                sh '''
+                    docker push $ARTIFACT_REGISTRY/$PROJECT_ID/$REPO_NAME/$IMAGE_NAME:$IMAGE_TAG
+                '''
+            }
+        }
 
-          echo "Pushing Docker image: $FULL_IMAGE"
-
-          # Authenticate Docker with Artifact Registry
-          gcloud auth configure-docker ${REGION}-docker.pkg.dev --quiet
-
-          # Push the image
-          docker push $FULL_IMAGE
-        '''
-    }
-}
 
 
 
