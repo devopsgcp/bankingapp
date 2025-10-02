@@ -27,7 +27,7 @@ pipeline {
 
     stage ('trivy fs scan') {
         steps {
-            sh 'mvn compile'
+            sh 'trivy fs --severity HIGH,CRITICAL --format json -o trivy-scan-report.json .'
         }
     }
 
