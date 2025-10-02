@@ -21,14 +21,7 @@ pipeline {
             sh 'trivy fs --severity HIGH,CRITICAL --format json -o trivy-scan-report.json .'
         }
     }
-   /* 
-    stage ('owasp dependencies check') {
-        steps {
-            dependencyCheck additionalArguments: '--scan .', odcInstallation: 'DC'
-            dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
-        }
-    }
-   */
+   
      stage ('Sonarqube-scanner') {
         steps {
            withSonarQubeEnv('sonar-server') {
