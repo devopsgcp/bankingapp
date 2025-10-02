@@ -48,7 +48,7 @@ pipeline {
        }
      }
     }
-    stage ('git packkage') {
+    stage ('mvn package') {
       steps {
         sh 'mvn package'
       }
@@ -70,7 +70,7 @@ pipeline {
             echo "Activating servic account"
             gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS
             gcloud config set project $PROJECT_ID
-            gcloud auth configure-docker $ARTIFACT_REGISTRY --quite
+            gcloud auth configure-docker $ARTIFACT_REGISTRY --quiet
             '''
     
         }
