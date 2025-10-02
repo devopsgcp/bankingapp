@@ -12,6 +12,7 @@ pipeline {
     IMAGE_NAME = 'bankapp'
     IMAGE_TAG = 'latest'
     ARTIFACT_REGISTRY = "${REGION}-docker.pkg.dev"
+    FULL_IMAGE = "${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO_NAME}/${IMAGE_NAME}:${IMAGE_TAG}"
   }
 
   stages {
