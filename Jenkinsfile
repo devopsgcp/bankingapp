@@ -6,6 +6,12 @@ pipeline {
   }
   environment {
     SCANNER_HOME = tool 'sonar-scanner'
+    PROJECT_ID = 'cicd-2024'
+    REGION = 'asia-south2'
+    REPO_NAME = 'bankapp'
+    IMAGE_NAME = 'bankapp'
+    IMAGE_TAG = 'latest'
+    ARTIFACT_REGISTRY = "${REGIOS}-docker.pkg.dev"
   }
 
   stages {
@@ -57,10 +63,39 @@ pipeline {
       }
    }
 
+   stage ('gcp_authentication') {
+    steps {
+        withCredentials([file(credentialsId: 'gcp-sa-key', variable: 'GOOGLE_APPLICATION_CREDENTIALS')]) {
+            sh '''
+            echo "Activating servic account"
+            gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS
+            gcloud config set project $PROJECT_ID
+            gcloud auth configure-docker $ARTIFACT_REGISTRY --quite
+            '''
+    
+        }
+    }
+   }
+
+   stage ('Build Docker images') {
+    steps {
+        sh '''
+          docker push $ARTIFACT_REGISTRY/$PROJECT_ID/$REPO_NAME/$IMAGE_NAME:$IMAGE_TAG
+        '''
+
+    }
+   }
+   stage ('Push Docker images') {
+    steps {
+        sh '''
+        docker push $ARTIFACT_REGISTRY/$PROJECT_ID/$REPO_NAME/$IMAGE_NAME:$IMAGE_TAG
+        '''
+    }
+
+   }
 
 
-  }
 
-
+ }
 
 }
