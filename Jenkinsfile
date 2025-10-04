@@ -4,58 +4,61 @@ pipeline {
         maven 'maven3'
         jdk 'jdk17'
     }
+
     environment {
         SCANNER_HOME = tool 'sonar-scanner'
         PROJECT_ID = 'cicd-2024'
         REGION = 'asia-south2'
         REPO_NAME = 'bankapp'
         IMAGE_NAME = 'bankapp'
-        IMAGE_TAG = 'latest'
+        IMAGE_TAG = "${BUILD_NUMBER}"  // Unique for each build
         ARTIFACT_REGISTRY = "${REGION}-docker.pkg.dev"
-        FULL_IMAGE = "${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO_NAME}/${IMAGE_NAME}:${IMAGE_TAG}"
+        FULL_IMAGE = "${ARTIFACT_REGISTRY}/${PROJECT_ID}/${REPO_NAME}/${IMAGE_NAME}:${IMAGE_TAG}"
     }
 
     stages {
 
-        stage('git checkout') {
+        stage('Checkout Code') {
             steps {
                 git branch: 'main', url: 'https://github.com/devopsgcp/bankingapp.git'
             }
         }
 
-        stage('trivy fs scan') {
+        stage('Trivy FS Scan') {
             steps {
-                sh 'trivy fs --severity HIGH,CRITICAL --format json -o trivy-scan-report.json .'
+                sh 'trivy fs --severity HIGH,CRITICAL --format json -o trivy-fs-report.json . || exit 1'
             }
         }
 
-        stage('Sonarqube-scanner') {
+        stage('SonarQube Analysis') {
             steps {
                 withSonarQubeEnv('sonar-server') {
                     sh '''
-                        $SCANNER_HOME/bin/sonar-scanner -Dsonar.projectKey=bankapp \
-                        -Dsonar.projectName=bankapp -Dsonar.sources=. \
+                        $SCANNER_HOME/bin/sonar-scanner \
+                        -Dsonar.projectKey=bankapp \
+                        -Dsonar.projectName=bankapp \
+                        -Dsonar.sources=. \
                         -Dsonar.java.binaries=target
                     '''
                 }
             }
         }
 
-        stage('Quality gate check') {
+        stage('Quality Gate') {
             steps {
                 timeout(time: 1, unit: 'HOURS') {
-                    waitForQualityGate abortPipeline: false, credentialsId: 'sonar-token'
+                    waitForQualityGate abortPipeline: true, credentialsId: 'sonar-token'
                 }
             }
         }
 
-        stage('mvn package') {
+        stage('Build with Maven') {
             steps {
-                sh 'mvn package'
+                sh 'mvn clean package'
             }
         }
 
-        stage('Push_to_nexus') {
+        stage('Push to Nexus') {
             steps {
                 withMaven(globalMavenSettingsConfig: 'bankapp', jdk: 'jdk17', maven: 'maven3', traceability: true) {
                     sh 'mvn deploy'
@@ -63,11 +66,10 @@ pipeline {
             }
         }
 
-        stage('gcp_authentication') {
+        stage('GCP Authentication') {
             steps {
                 withCredentials([file(credentialsId: 'gcp-sa-key', variable: 'GOOGLE_APPLICATION_CREDENTIALS')]) {
                     sh '''
-                        echo "Activating service account"
                         gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS
                         gcloud config set project $PROJECT_ID
                         gcloud auth configure-docker $ARTIFACT_REGISTRY --quiet
@@ -79,24 +81,23 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 sh '''
-                    docker build -t $ARTIFACT_REGISTRY/$PROJECT_ID/$REPO_NAME/$IMAGE_NAME:$IMAGE_TAG .
+                    docker build -t $FULL_IMAGE .
                 '''
             }
         }
 
-        stage('Trivy Scan (Docker Image)') {
+        stage('Trivy Docker Scan') {
             steps {
                 sh '''
-                    echo "Scanning Docker image with Trivy..."
-                    trivy image --severity HIGH,CRITICAL --format json -o trivy-image-report.json $FULL_IMAGE
+                    trivy image --severity HIGH,CRITICAL --format json -o trivy-image-report.json $FULL_IMAGE || exit 1
                 '''
             }
         }
 
-        stage('Push to Artifact Registry') {
+        stage('Push Docker Image to Artifact Registry') {
             steps {
                 sh '''
-                    docker push $ARTIFACT_REGISTRY/$PROJECT_ID/$REPO_NAME/$IMAGE_NAME:$IMAGE_TAG
+                    docker push $FULL_IMAGE
                 '''
             }
         }
@@ -105,22 +106,21 @@ pipeline {
             steps {
                 withCredentials([file(credentialsId: 'gcp-sa-key', variable: 'GOOGLE_APPLICATION_CREDENTIALS')]) {
                     sh '''
-                        echo "Authenticating to GKE..."
                         gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS
                         gcloud config set project $PROJECT_ID
-                        export PATH=$PATH:/usr/bin:/usr/local/bin
                         export USE_GKE_GCLOUD_AUTH_PLUGIN=True
                         gcloud container clusters get-credentials bankapp --region=$REGION --project=$PROJECT_ID
-                        echo "Deploying to GKE..."
+                        
+                        # Apply Kubernetes manifests
                         kubectl apply -f k8s/
-                       
+
+                        # Wait for deployment rollout to complete
+                        kubectl rollout status deployment/bankapp
                     '''
                 }
             }
         }
-
-
-    } // end of stages
+    }
 
     post {
         always {
