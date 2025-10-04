@@ -1,0 +1,70 @@
+apiVersion: apps/v1
+kind: Deployment 
+metadata:
+  name: bankapp
+  labels:
+    app: web 
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: web 
+  template:
+    metadata:
+      labels:
+        app: web
+    spec:
+      nodeSelector:
+        cloud.google.com/gke-nodepool: highcpu-pool
+      containers:
+        - name: bankapp-apps
+          image: asia-south2-docker.pkg.dev/cicd-2024/bankapp/bankapp:latest
+          ports:
+            - containerPort: 8080
+          imagePullPolicy: Always
+          resources:
+            requests:
+              memory: "500Mi"
+              cpu: "500m"
+            limits:
+              memory: "1Gi"
+              cpu: "1"
+          env:
+            - name: DB_HOSTNAME
+              value: "mysql-externalname-service"
+            - name: DB_PORT
+              value: "3306"
+            - name: DB_NAME 
+              value: bankapp 
+            - name: BD_USERNAME
+              value: "root"
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-db-password
+                  key: db-password  
+          
+          volumeMounts:
+            - mountPath: /data
+              name: bakapp-data
+      volumes:
+        - name: bakapp-data
+          persistentVolumeClaim:
+            claimName: mysql-pv-claim 
+
+       
+
+---
+apiVersion: v1 
+kind: Service 
+metadata:
+  name: bankapp-svc 
+spec:
+  selector:
+    app: web
+  type: LoadBalancer
+  ports:
+    - name: bankapp-port 
+      port: 80
+      targetPort: 8080
+
