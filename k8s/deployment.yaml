@@ -18,7 +18,7 @@ spec:
         cloud.google.com/gke-nodepool: highcpu-pool
       containers:
         - name: bankapp-apps
-          image: asia-south2-docker.pkg.dev/cicd-2024/bankapp/bankapp:latest
+          image: asia-south2-docker.pkg.dev/cicd-2024/bankapp/bankapp:${BUILD_NUMBER}
           ports:
             - containerPort: 8080
           imagePullPolicy: Always
