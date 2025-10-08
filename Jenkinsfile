@@ -112,9 +112,7 @@ pipeline {
                         gcloud container clusters get-credentials bankapp --region=$REGION --project=$PROJECT_ID
                         
                         # Apply Kubernetes manifests
-                       # kubectl get namespace webapps || kubectl create namespace webapps
-                       # kubectl apply  -f k8s/RBAC/
-                     #   kubectl delete -n webapps -f k8s/
+                        kubectl get namespace webapps || kubectl create namespace webapps
                         kubectl apply -f k8s/
 
                     
