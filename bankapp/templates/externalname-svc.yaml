@@ -4,4 +4,4 @@ metadata:
   name: mysql-externalname-service
 spec:
   type: ExternalName
-  externalName: 10.27.0.3
+  externalName: 10.86.0.3

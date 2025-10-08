@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-bankapp
+  namespace: webapps
+  labels:
+    app: web
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: web
+  template:
+    metadata:
+      labels:
+        app: web
+    spec:
+      nodeSelector:
+        cloud.google.com/gke-nodepool: {{ .Values.nodeSelector."cloud.google.com/gke-nodepool" }}
+      containers:
+        - name: bankapp-apps
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.service.targetPort }}
+          livenessProbe:
+            httpGet:
+              path: /login
+              port: {{ .Values.service.targetPort }}
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /login
+              port: {{ .Values.service.targetPort }}
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            failureThreshold: 3
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          env:
+            - name: DB_HOSTNAME
+              value: {{ .Values.env.DB_HOSTNAME | quote }}
+            - name: DB_PORT
+              value: {{ .Values.env.DB_PORT | quote }}
+            - name: DB_NAME
+              value: {{ .Values.env.DB_NAME | quote }}
+            - name: DB_USERNAME
+              value: {{ .Values.env.DB_USERNAME | quote }}
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.env.DB_PASSWORD_SECRET }}
+                  key: {{ .Values.env.DB_PASSWORD_KEY }}
+          volumeMounts:
+            - mountPath: /data
+              name: bankapp-data
+      volumes:
+        - name: bankapp-data
+          persistentVolumeClaim:
+            claimName: {{ .Values.pvc.name }}

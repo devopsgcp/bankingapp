@@ -1,0 +1,51 @@
+replicaCount: 2
+
+image:
+  repository: asia-south2-docker.pkg.dev/cicd-2024/bankapp/bankapp
+  tag: latest
+  pullPolicy: Always
+
+service:
+  type: LoadBalancer
+  port: 80
+  targetPort: 8080
+
+hpa:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 50
+
+resources:
+  requests:
+    memory: "500Mi"
+    cpu: "500m"
+  limits:
+    memory: "1Gi"
+    cpu: "1"
+
+env:
+  DB_HOSTNAME: mysql-externalname-service
+  DB_PORT: "3306"
+  DB_NAME: bankapp
+  DB_USERNAME: root
+  DB_PASSWORD_SECRET: mysql-db-password
+  DB_PASSWORD_KEY: db-password
+
+nodeSelector:
+  cloud.google.com/gke-nodepool: highcpu-pool
+
+pvc:
+  name: mysql-pv-claim
+  storageClassName: gke-pd-balanced-rwo-sc
+  size: 8Gi
+  accessModes: ["ReadWriteOnce"]
+
+storageClass:
+  name: gke-pd-balanced-rwo-sc
+  provisioner: pd.csi.storage.gke.io
+  volumeBindingMode: WaitForFirstConsumer
+  allowVolumeExpansion: true
+  reclaimPolicy: Retain
+  parameters:
+    type: pd-balanced
