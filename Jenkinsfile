@@ -112,7 +112,9 @@ pipeline {
                         gcloud container clusters get-credentials bankapp --region=$REGION --project=$PROJECT_ID
                         
                         # Apply Kubernetes manifests
-                        kubectl apply -f k8s/
+                        kubectl get namespace webapps || kubectl create namespace webapps
+                       # kubectl apply  -f k8s/RBAC/
+                        kubectl apply -n webapps -f k8s/
 
                         # Wait for deployment rollout to complete
                         kubectl rollout status deployment/bankapp
