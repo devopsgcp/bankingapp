@@ -73,7 +73,8 @@ spec:
 apiVersion: v1 
 kind: Service 
 metadata:
-  name: bankapp-svc 
+  name: bankapp-svc
+  namespace: webapps
 spec:
   selector:
     app: web
