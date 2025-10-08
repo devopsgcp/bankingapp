@@ -114,10 +114,10 @@ pipeline {
                         # Apply Kubernetes manifests
                        # kubectl get namespace webapps || kubectl create namespace webapps
                        # kubectl apply  -f k8s/RBAC/
+                        kubectl delete -n webapps -f k8s/
                         kubectl apply -f k8s/
 
-                        # Wait for deployment rollout to complete
-                        kubectl rollout status deployment/bankapp
+                    
                     '''
                 }
             }
